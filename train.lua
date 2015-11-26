@@ -1,6 +1,7 @@
 require 'xlua'
 require 'optim'
-require 'cunn'
+require 'nn'
+--require 'cunn'
 dofile './provider.lua'
 local c = require 'trepl.colorize'
 
@@ -42,11 +43,14 @@ end
 print(c.blue '==>' ..' configuring model')
 local model = nn.Sequential()
 model:add(nn.BatchFlip():float())
-model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
-model:add(dofile('models/'..opt.model..'.lua'):cuda())
+--model:add(nn.Copy('torch:FloatTensor','torch:CudaTensor'):cuda()) --:cuda() make a variable CudaTensor
+-- IMPORTANT: CAST MODEL TO FLOAT!
+--model:float()
+model:add(dofile('models/'..opt.model..'.lua'))
+--model:add(dofile('models/'..opt.model..'.lua'):cuda())
 model:get(2).updateGradInput = function(input) return end
 print(model)
-
+model:float()
 print(c.blue '==>' ..' loading data')
 provider = torch.load 'provider.t7'
 provider.trainData.data = provider.trainData.data:float()
@@ -64,7 +68,8 @@ parameters,gradParameters = model:getParameters()
 
 
 print(c.blue'==>' ..' setting criterion')
-criterion = nn.CrossEntropyCriterion():cuda()
+criterion = nn.CrossEntropyCriterion()
+--criterion = nn.CrossEntropyCriterion():cuda()
 
 
 print(c.blue'==>' ..' configuring optimizer')
@@ -85,7 +90,8 @@ function train()
   
   print(c.blue '==>'.." online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
 
-  local targets = torch.CudaTensor(opt.batchSize)
+  -- local targets = torch.CudaTensor(opt.batchSize)
+  local targets = torch.FloatTensor(opt.batchSize)
   local indices = torch.randperm(provider.trainData.data:size(1)):long():split(opt.batchSize)
   -- remove last element so that all the batches have equal size
   indices[#indices] = nil
@@ -93,15 +99,22 @@ function train()
   local tic = torch.tic()
   for t,v in ipairs(indices) do
     xlua.progress(t, #indices)
-
+    --print(v)
     local inputs = provider.trainData.data:index(1,v)
     targets:copy(provider.trainData.labels:index(1,v))
 
     local feval = function(x)
       if x ~= parameters then parameters:copy(x) end
       gradParameters:zero()
-      
-      local outputs = model:forward(inputs)
+      --print("debug: ")  
+     -- print(torch.type(inputs))
+      --print(torch.type(targets))
+      model = model:float()
+      local outputs = model:forward(torch.FloatTensor(inputs))
+      targets = targets:float()
+      outputs = outputs:float()
+      print('done')      
+      criterion = criterion:float()
       local f = criterion:forward(outputs, targets)
       local df_do = criterion:backward(outputs, targets)
       model:backward(inputs, df_do)

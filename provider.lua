@@ -18,6 +18,7 @@ function Provider:__init(full)
   -- load dataset
   self.trainData = {
      data = torch.Tensor(50000, 3072),
+
      labels = torch.Tensor(50000),
      size = function() return trsize end
   }

@@ -1,5 +1,5 @@
 require 'nn'
-require 'cunn'
+--require 'cunn'
 
 local backend_name = 'nn'
 
