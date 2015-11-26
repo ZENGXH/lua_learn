@@ -6,7 +6,7 @@ See LICENSE for full license text
 
    
 -- ]]
-
+  
 local repl
 
 local function hook_factory (repl_threshold)
