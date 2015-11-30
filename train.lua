@@ -15,18 +15,16 @@ opt = lapp[[
    --epoch_step               (default 25)          epoch step
    --model                    (default vgg_bn_drop)     model name
    --max_epoch                (default 300)           maximum number of iterations
-]]
+]] -- table
 
 print(opt)
 
 do -- data augmentation module
   local BatchFlip,parent = torch.class('nn.BatchFlip', 'nn.Module')
-
   function BatchFlip:__init()
     parent.__init(self)
     self.train = true
   end
-
   function BatchFlip:updateOutput(input)
     if self.train then
       local bs = input:size(1)
@@ -53,7 +51,7 @@ print(model)
 model:float()
 print(c.blue '==>' ..' loading data')
 provider = torch.load 'provider.t7'
-provider.trainData.data = provider.trainData.data:float()
+provider.trainData.data = provider.trainData.data:float() -- provider.trainData is table
 provider.testData.data = provider.testData.data:float()
 
 confusion = optim.ConfusionMatrix(10)
