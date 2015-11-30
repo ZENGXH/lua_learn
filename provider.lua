@@ -66,7 +66,10 @@ function Provider:normalize()
      xlua.progress(i, trainData:size())
      -- rgb -> yuv
      local rgb = trainData.data[i]
+     rgb3 = rgb:resize(3,32,32) 
+     -- convert from 3072 to 3d, after color space transformation, take Y only, ie gray
      local yuv = image.rgb2yuv(rgb)
+     
      -- normalize y locally:
      yuv[1] = normalization(yuv[{{1}}])
      trainData.data[i] = yuv
