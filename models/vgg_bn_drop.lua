@@ -23,15 +23,22 @@ end
 
 -- Will use "ceil" MaxPooling because we want to save as much
 -- space as we can
-local MaxPooling = backend.SpatialMaxPooling
+  local MaxPooling = backend.SpatialMaxPooling
 
+--  nInputPlane = 3
+--  nOutputPlane = 64
+--  vgg = nn.Sequential()
+--  vgg:add(backend.SpatialConvolution(nInputPlane, nOutputPlane, 3,3, 1,1, 1,1))
+--  vgg:add(nn.SpatialBatchNormalization(nOutputPlane,1e-3))
+--  vgg:add(backend.ReLU(true))
+    
 ConvBNReLU(3,64):add(nn.Dropout(0.3))
 ConvBNReLU(64,64)
-vgg:add(MaxPooling(2,2,2,2):ceil())
+vgg:add(MaxPooling(2,2,2,2):ceil())vff
 
 ConvBNReLU(64,128):add(nn.Dropout(0.4))
 ConvBNReLU(128,128)
-vgg:add(MaxPooling(2,2,2,2):ceil())
+vgg:add(MaxPooling(2,2,2,2):ceil()) -- for 1x64x32x32 input time for 2 block: 0.2796s
 
 ConvBNReLU(128,256):add(nn.Dropout(0.4))
 ConvBNReLU(256,256):add(nn.Dropout(0.4))
