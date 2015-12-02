@@ -18,7 +18,10 @@ function Provider:__init(full)
   local trsize = 4800
   local tesize = 1200
   local total_size = 6000
+  local ft_dim = 5408
   local idx_ran = torch.randperm(6000)
+  local dataset = 'hogft.bin'
+  
   -- download dataset
   --if not paths.dirp('cifar-10-batches-t7') then
   --   local www = 'http://torch7.s3-website-us-east-1.amazonaws.com/data/cifar-10-torch.tar.gz'
@@ -28,21 +31,23 @@ function Provider:__init(full)
 
   -- load dataset
   self.trainData = {
-     data = torch.Tensor(trsize, 36865),
-
+  --   data = torch.Tensor(trsize, 36865),
+     data = torch.Tensor(trsize, ft_dim),
+    
      labels = torch.Tensor(trsize),
      size = function() return trsize end
   }
   self.testData = {
-     data = torch.Tensor(tesize, 36865),
+     data = torch.Tensor(tesize, ft_dim),
      labels = torch.Tensor(tesize),
      size = function() return tesize end
   }
 
 
   local trainData = self.trainData
-  local x = torch.load('./train/Trainset_x.bin')
-  local y = torch.load('./train/Trainset_y.bin')
+  local x = torch.load('./train/Trainset_x_'..dataset)
+  local y = torch.load('./train/Trainset_y_'..dataset)
+
   -- local x = torch.load('./train/Trainset_x.bin', 'ascii')
   -- local y = torch.load('./train/Trainset_y.bin','ascii')
   local testData = self.testData
@@ -54,14 +59,14 @@ function Provider:__init(full)
      trainData.labels[i] = y[idx_ran[i]]
   end
 
-  trainData.labels = trainData.labels + 1
+  -- trainData.labels = trainData.labels + 1
 
   for i = 1, tesize do
      testData.data[i] = x[idx_ran[i + trsize]]
      testData.labels[i] = y[idx_ran[i + trsize]]
   end
 
-  testData.labels = testData.labels + 1
+  -- testData.labels = testData.labels + 1
 
 --[[
   local subset = torch.load('cifar-10-batches-t7/test_batch.t7', 'ascii')
@@ -81,8 +86,8 @@ function Provider:__init(full)
   testData.labels = testData.labels[{ {1,tesize} }]
 
   -- reshape data
-  trainData.data = trainData.data:reshape(trsize,36865)
-  testData.data = testData.data:reshape(tesize,36865)
+  trainData.data = trainData.data:reshape(trsize,ft_dim)
+  testData.data = testData.data:reshape(tesize,ft_dim)
   -- trainData.data = trainData.data:reshape(trsize,3,32,32)
   -- testData.data = testData.data:reshape(tesize,3,32,32)
 end
@@ -102,11 +107,13 @@ function Provider:normalize()
   for i = 1,trainData:size() do
      xlua.progress(i, trainData:size())
      -- rgb -> yuv
-     local rgb = trainData.data[i]
-     local yuv = image.rgb2yuv(rgb)
+     -- local rgb = trainData.data[i]
+     -- local yuv = image.rgb2yuv(rgb)
      -- normalize y locally:
-     yuv[1] = normalization(yuv[{{1}}])
-     trainData.data[i] = yuv
+     -- yuv[1] = normalization(yuv[{{1}}])
+     local feature = trainData.data[i]
+     feature = normalization(feature)
+     trainData.data[i] = feature
   end
   -- normalize u globally:
   local mean_u = trainData.data:select(2,2):mean()
@@ -128,11 +135,13 @@ function Provider:normalize()
   for i = 1,testData:size() do
     xlua.progress(i, testData:size())
      -- rgb -> yuv
-     local rgb = testData.data[i]
-     local yuv = image.rgb2yuv(rgb)
+     -- local rgb = testData.data[i]
+     -- local yuv = image.rgb2yuv(rgb)
      -- normalize y locally:
-     yuv[{1}] = normalization(yuv[{{1}}])
-     testData.data[i] = yuv
+     -- yuv[{1}] = normalization(yuv[{{1}}])
+     local feature = testData.data[i]
+     feature = normalization(feature)
+     testData.data[i] = feature
   end
   -- normalize u globally:
   testData.data:select(2,2):add(-mean_u)
