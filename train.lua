@@ -101,27 +101,75 @@ function train()
     local inputs = provider.trainData.data:index(1,v)
     targets:copy(provider.trainData.labels:index(1,v))
 
+   -- STEPS: DEF COST and CAL GRADIENT:
+   -- optimization function => loss function wrt to layers paramters
+
     local feval = function(x)
+      --[[
+         sgd call faval function(loss function), 
+         cal the grandient wrt to parameters by plugging in parameters
+         
+         in sgd:
+            fx,dfdx = opfunc(x) -- then use dfdx to updata the paramters
+         
+         ie. f/fx: current cose; gradPatameters/dfdx: grandient of loss function wrt to paramters
+            f, gradParameters = feval(paramters)
+      -- return parameters(has been changed) and {fx}
+      --]]
       if x ~= parameters then parameters:copy(x) end
+      
       gradParameters:zero()
-      --print("debug: ")  
-     -- print(torch.type(inputs))
-      --print(torch.type(targets))
+      
       model = model:float()
       local outputs = model:forward(torch.FloatTensor(inputs))
+         
+      -- cast datatypr
       targets = targets:float()
       outputs = outputs:float()
-      print('done')      
       criterion = criterion:float()
+      
+      -- calculate error/cost(f) and gradient wrt to parameters
+      -- \partial{L} / \partial{W} = -2 * E = 2 * (outputs - targets)
       local f = criterion:forward(outputs, targets)
       local df_do = criterion:backward(outputs, targets)
+      
+      -- apply chain rule, get gradPatameters for each layer
+      -- in backward procedure: pass gradOutput of current layer to previous layer
+      -- 
       model:backward(inputs, df_do)
-
+      
+      -- add prediction to cunfusion matrix to calculate the train error
       confusion:batchAdd(outputs, targets)
 
+      -- return cost and gradient for parameters updating
       return f,gradParameters
     end
-    optim.sgd(feval, parameters, optimState)
+    
+   -- STEPS: UPDATE the parameters
+   
+   --[[  by sgd method
+         parameter update done in optim.sgd (https://github.com/torch/optim/blob/master/sgd.lua)
+         feval is `opfunc` ert to w: a function(loss function) that takes a single input (X), the point
+             of a evaluation, and returns f(X) and df/dX
+         parameters: x is the initial point
+         
+         grandient_new =  optimState.momument * grandient_ole + (1-mom) * gradient(dfdx) 
+         parameters_new = parameters_old + lr * grandient(dfdx_new)
+         
+         in sgd: 
+            state.dfdx:mul(mom):add(1-damp, dfdx) 
+            x:add(-clr, dfdx)
+            
+         ie: 
+            dfdx_new = dfdx * mom + (1 - mom) * granndient(dfdx) 
+            x = x - clr * dfdx // x is new parameters which will be return as global variable
+   --]]
+   
+   -- pass loss function, current paramets and setting, 
+   
+   optim.sgd(feval, parameters, optimState) -- return paramters and {fx}
+
+   
   end
 
   confusion:updateValids()
