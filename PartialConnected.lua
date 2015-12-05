@@ -2,48 +2,54 @@ local Linear, parent = torch.class('nn.PatialConnected', 'nn.Module')
 
 
 function PatialConnected: __init(inputSize, outputSize)
+	batchSize = 1
+	
 	inputSize = 8
 	outputsize = 4
+	num_model = 4
+	input_pmodel = 2 --dimension of feature
+	output_pmodel = 1
 	self.model = {}
-	input_split_flag = 0
-	gradOutput_split_flag = 0
+	input_split_flag = false
+	gradOutput_split_flag = false
 
-
-	function createModel(inputSize, outputSize)
-		-- inputSize and be {N, 2}
-		local submodel = {}
-		submodel.input = torch.Tensor(inputSize)
-		submodel.weight = torch.Tensor(inputSize, outputSize)
-		submodel.bias = torch.Tensor(outputSize)
-		submodel.gradWeight = torch.Tensor(inputSize, outputSize)
-		submodel.gradBias = torch.Tensor(outputSize)
-		submodel.output = torch.Tensor(outputSize)
-		submodel.gradOutput = torch.Tensor(outputSize)
-		
-		return submodel
+	for i=1, num_model do 
+		table.insert(self.model, createModel())
 	end
-
-	for i=1,4
-		table.insert(self.model,createModel(inputSize/2, 1))
-	
 	print(model)
 	-- #
 	-- three in a mask
 	parent.__init(self)
 
-	sef.updateModel2self()
+	self.updateModel2self()
 
 	self.reset()
 end
 
+function createModel()
+	-- inputSize and be {N, 2}
+	local submodel = {}
+	submodel.input = torch.Tensor(input_pmodel)
+	
+	submodel.weight = torch.Tensor(input_pmodel, output_pmodel)
+	submodel.gradWeight = torch.Tensor(input_pmodel, output_pmodel)
+	
+	submodel.bias = torch.Tensor(1) -- each model have one bias, intotal num_model
+	submodel.gradBias = torch.Tensor(1) -- 
+	
+	submodel.output = torch.Tensor(output_pmodel)
+	submodel.gradOutput = torch.Tensor(output_pmodel)
+	
+	return submodel
+end
 
-function Linear:updateModel2self()
+function PartialConnected:updateModel2self()
 	self.weight = self.model[1].weight
 	self.bias = self.model[1].bias
 	self.gradWeight = self.model[1].gradWeight
 	self.gradBias = self.model[1].gradBias
 
-	for i = 2, #self.model do
+	for i = 2, num_model do
 		self.weight = torch.cat(self.weight, self.model[i].weight)
 		self.bias = torch.cat(self.bias, self.model[i].bias)
 		self.gradWeight = torch.cat(self.gradWeight, self.model[i].gradWeight)
@@ -53,55 +59,61 @@ function Linear:updateModel2self()
 end
 
 
-function Linear:reset(stdv)
+function PartialConnected:reset(stdv)
    if stdv then
       stdv = stdv * math.sqrt(3)
    else
       stdv = 1./math.sqrt(self.model[1].weight:size(2))
    end
 
-    for i = 1, #self.model
+   for i = 1, num_model do
       self.model[i].weight:uniform(-stdv, stdv)
       self.model[i].bias:uniform(-stdv, stdv)
-   	end
+   end
 
    return self
 end
 
 
-
-
-function PatialConnected:updateOutput(input) 
+function PartialConnected:updateOutput(input) 
 	-- input size； BATCH * D
 	-- input dimension should be 12 x 1 vector
 	-- output = torch.Tensor(4):fill(0) -- initilaize
-	if(~input_split_flag) then splitInput2Sub(input) end
+	if(not input_split_flag) then splitInput2Sub(input) end
 
-	if(input:dim() ~= 1) then {
+	if(input:dim() ~= 1) then 
 		-- reshape()
 		for i = 1, #self.model do -- 1 to 4
-			self.model[i].output = self.model[i].bias + 
-									self.model[i].weight * self.model[i].input 
+			
+			p(self.model[i].weight)
+			p(self.model[i].input)
+			p(self.model[i].bias)
+			p(self.model[i].output)
+			
+			self.addbuffer = torch.Tensor(output_pmodel):fill(1):float() -- scala in this case
+			self.model[i].output:addmm(self.model[i].weight * self.model[i].input)
+			self.model[i].output:addr(1, self.model[i].output, 1, self.model[i].bias, self.addbuffer)
 			-- use torch.addmv([res,] [beta,] [v1,] vec1, [v2,] mat, vec2)
 			-- torch.addmv(1Db_vec(N,D), X(N,D), W(D))
 			-- res = (beta * res) + (v1 * vec1) + (v2 * (mat * vec2))
 			-- beta: momentumn, v1: bias, v2 = 1, mat: X, vec2: weight
 			print(self.model[i].output)
 		end
-	}
-	else{
+	
+	else
 		print('dimension error')
 		-- sli = input:reshape(input:size(1),4,2) 
 		-- for i = 1, #sli[1] do -- 1 to 4
 		-- output[i] = bias[i] + weight[i] * sli[i] -- use torch.addmv
 		-- output:addmv()
-	}
+	end
 	-- cat output
 	local out = self.model[1].output
 
 	for i = 2, #self.model do
 		out = torch.cat(out, self.model[i].output)
-
+	end
+	
 	self.output = out
 
 	return self.output -- 4x1
@@ -155,10 +167,10 @@ function PatialConnected:accGradParameters(input, gradOutput, scale)
 	--]]
 
 	scale = scale or 1
-	if(~input_split_flag) then splitInput2Sub(input) end
-	if(~gradOutput_split_flag) then splitGradOutput2Sub(gradOutput) end
+	if(not input_split_flag) then splitInput2Sub(input) end
+	if(not gradOutput_split_flag) then splitGradOutput2Sub(gradOutput) end
 
-	if(input:dim() ~= 1) then {
+	if(input:dim() ~= 1) then 
 
 		--[[
 			[res] torch.addr([res,] [v1,] mat, [v2,] vec1, vec2)
@@ -179,18 +191,14 @@ function PatialConnected:accGradParameters(input, gradOutput, scale)
 		for i = 1, #self.model
 			-- ?? self.weight[i].addr(scale, gradOutput[i], sli[i])
 
-			self.model[i].gradWeight:addmm(scale, 
-										self.model[i].gradOutput:t(),
-										self.model[i].input) 
-			self.model[i].gradBias:addmv(scale,
-										self.model[i].gradOutput:t(),
-										self.model[i].addBuffer) 
+			self.model[i].gradWeight:addmm(scale, self.model[i].gradOutput:t(), self.model[i].input) 
+			self.model[i].gradBias:addmv(scale, self.model[i].gradOutput:t(), self.model[i].addBuffer) 
 			-- in the case of output is scala
-	}else 
+	else 
 		print('input dimension should be one')
 	end
 
-	self.updateModel2self()
+	self:updateModel2self()
 
 end
 
@@ -207,29 +215,31 @@ function PatialConnected:updateGradInput(input, gradOutput)
 			= GET * \partial{output}/\partial{input}
 			= GET * W
 	--]]
-	if(~input_split_flag) then splitInput2Sub(input) end
-	if(~gradOutput_split_flag) then splitGradOutput2Sub(gradOutput) end
+	if(not input_split_flag) then splitInput2Sub(input) end
+	if(not gradOutput_split_flag) then splitGradOutput2Sub(gradOutput) end
 
 	if input:dim() ~= 1 then
 		for i = 1,#self.model do
-			self.model[i].gradInput:addmv(0, 1, 
-										self.model[i].gradOutput, 
-										self.model[i].weight)
+			self.model[i].gradInput:addmv(0, 1, self.model[i].gradOutput, self.model[i].weight)
 		end
 	end
 
-	self.updateModel2self()
+	self:updateModel2self()
 end
 
 
-function splitInput2Sub(input)
-	input_split_flag = 1
+function PartialConnected: splitInput2Sub(input)
+	input_split_flag = true
 	for i=1, #self.model do
 		self.submodel[i].input = input[{{}, 
 			{1 + (i-1) * #self.submodel[i].input, i * #self.submodel[i].input}}]
 
-function splitGradOutput2Sub(gradOutput)
-	gradOutput_split_flag = 1
+function PartialConnected:splitGradOutput2Sub(gradOutput)
+	gradOutput_split_flag = true
 	for i=1, #self.model do
 		self.submodel[i].gradOutput = gradOutput[{{}, 
 			{1 + (i-1) * #self.submodel[i].output, i * #self.submodel[i].output}}]
+
+function p(x)
+	print(p:size())
+end
