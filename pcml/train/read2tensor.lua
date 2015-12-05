@@ -9,12 +9,12 @@ x: 6000x5408 tensor, y: 6000x1 tensor -- for hogft.csv
 ]]--
 
 info = lapp [[
-  -c, --csv  (default "hogft.csv") datafile in csv
+  -c, --csv  (default "cnnft.csv") datafile in csv
 ]]
 
 require 'io'
 require 'torch'
-
+local ft_dim = 36864
 
 local function split(str, sep)
     sep = sep or ','
@@ -34,7 +34,7 @@ i = 1
 -- x = torch.Tensor(6000,36865)
 -- temp = torch.Tensor(36865)
 
-x = torch.Tensor(6000,5408)
+x = torch.Tensor(6000,ft_dim)
 temp = torch.Tensor(x:size()[2])
 
 for line in file:lines() do

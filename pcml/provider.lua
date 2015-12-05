@@ -18,9 +18,9 @@ function Provider:__init(full)
   local trsize = 4800
   local tesize = 1200
   local total_size = 6000
-  local ft_dim = 5408
+  local ft_dim = 36864
   local idx_ran = torch.randperm(6000)
-  local dataset = 'hogft.bin'
+  local dataset = 'cnnft.bin'
   
   -- download dataset
   --if not paths.dirp('cifar-10-batches-t7') then
@@ -45,8 +45,8 @@ function Provider:__init(full)
 
 
   local trainData = self.trainData
-  local x = torch.load('./train/Trainset_x_'..dataset)
-  local y = torch.load('./train/Trainset_y_'..dataset)
+  local x = torch.load('train/Trainset_x_'..dataset)
+  local y = torch.load('train/Trainset_y_'..dataset)
 
   -- local x = torch.load('./train/Trainset_x.bin', 'ascii')
   -- local y = torch.load('./train/Trainset_y.bin','ascii')
@@ -88,6 +88,7 @@ function Provider:__init(full)
   -- reshape data
   trainData.data = trainData.data:reshape(trsize,ft_dim)
   testData.data = testData.data:reshape(tesize,ft_dim)
+  print(torch.sum(trainData.labels))
   -- trainData.data = trainData.data:reshape(trsize,3,32,32)
   -- testData.data = testData.data:reshape(tesize,3,32,32)
 end

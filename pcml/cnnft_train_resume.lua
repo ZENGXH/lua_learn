@@ -10,7 +10,7 @@ local c = require 'trepl.colorize'
 opt = lapp[[
    -s,--save                  (default "logs")      subdirectory to save logs
    -b,--batchSize             (default 8)          batch size
-   -r,--learningRate          (default 0.001)        learning rate
+   -r,--learningRate          (default 0.0001)        learning rate
    --learningRateDecay        (default 1e-7)      learning rate decay
    --weightDecay              (default 0.0005)      weightDecay
    -m,--momentum              (default 0.9)         momentum
@@ -46,9 +46,11 @@ do -- data augmentation module
 end
 
 print(c.blue '==>' ..' configuring model')
-local model = nn.Sequential()
+local model = torch.load('logs/cnn_0312/model.net')
+--local model = nn.Sequential()
 -- DataAugmentation:
 -- no filp for 36865 fts
+--[[
 model:add(nn.BatchFlip():float())
 
 --model:add(nn.Copy('torch:FloatTensor','torch:CudaTensor'):cuda()) --:cuda() make a variable CudaTensor
@@ -57,8 +59,8 @@ model:add(nn.BatchFlip():float())
 -- load model from file
 model:add(dofile('models/'..opt.model..'.lua'))
 
---model:add(dofile('models/'..opt.model..'.lua'):cuda())
-model:get(2).updateGradInput = function(input) return end
+--model:add(dofile('models/'..opt.model..'.lua'):cuda())--]]
+model:get(2).updateGradInput = function(input) return end 
 print(model)
 model:float()
 print(c.blue '==>' ..' loading data')
@@ -191,7 +193,7 @@ function test()
   -- disable flips, dropouts and batch normalization
   model:evaluate()
   print(c.blue '==>'.." testing")
-  local bs = op.batchSize
+  local bs = opt.batchSize
   for i=1,provider.testData.data:size(1),bs do
     local outputs = model:forward(provider.testData.data:narrow(1,i,bs))
     confusion:batchAdd(outputs, provider.testData.labels:narrow(1,i,bs))
