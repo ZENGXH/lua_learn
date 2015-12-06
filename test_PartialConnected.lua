@@ -6,16 +6,16 @@ dofile 'PartialConnected.lua'
 opt = lapp[[
    -s,--save                  (default "logs")      subdirectory to save logs
    -b,--batchSize             (default 128)          batch size
-   -r,--learningRate          (default 1)        learning rate
+   -r,--learningRate          (default 0.1)        learning rate
    --learningRateDecay        (default 1e-7)      learning rate decay
    --weightDecay              (default 0.0005)      weightDecay
-   -m,--momentum              (default 0.9)         momentum
+   -m,--momentum              (default 0.5)         momentum
    --epoch_step               (default 25)          epoch step
    --model                    (default vgg_bn_drop)     model name
    --max_epoch                (default 300)           maximum number of iterations
 ]] -- table
 
-local model = nn.Sequential()
+ model = nn.Sequential()
 
 model:add(nn.PartialConnected(1,1))
 
@@ -40,9 +40,12 @@ optimState = {
   learningRateDecay = opt.learningRateDecay,
 }
 
+inpu = torch.Tensor(30,8,1,1):uniform(1,100):float()
 model:training()
-for i = 1,30 do
-inpu = torch.Tensor(30,8,1,1):uniform(-5,5):float()
+for i = 1,10 do
+
+
+
 inputs = torch.Tensor(1,8,1,1):uniform(-2,2)
 inputs:float()
     local feval = function(x)
@@ -59,41 +62,43 @@ inputs:float()
       --]]
       if x ~= parameters then parameters:copy(x) end
       
-      gradParameters:zero()
+--      gradParameters:zero()
       
       model = model:float()
      -- print(type(inputs))
       local outputs = model:forward(inpu[{{i},{}}])
-      print("output is ")
+--      print(inpu[{{i},{}}])
+  --    print("then output is ")
   --    local outputs = model:forward(torch.FloatTensor{inputs})
-      print(outputs)   
+--      print(outputs)   
       -- self.model[i].output:addmm(0, 1, self.model[i].weight, self.model[i].input)
       -- cast datatypr
       targets = targets:float()
       outputs = outputs:float()
       criterion = criterion:float()
-      
+      print(targets)
       -- calculate error/cost(f) and gradient wrt to parameters
       -- \partial{L} / \partial{W} = -2 * E = 2 * (outputs - targets)
       local f = criterion:forward(outputs, targets)
-	print('criterion forward done')
+--	print('criterion forward done')
       local df_do = criterion:backward(outputs, targets)
       
       -- apply chain rule, get gradPatameters for each layer
       -- in backward procedure: pass gradOutput of current layer to previous layer
       -- 
-	print('backward')
+--	print('backward')
       model:backward(inputs, df_do)
       
       -- add prediction to cunfusion matrix to calculate the train error
       confusion:add(outputs, targets)
 
-        parameters,gradParameters = model:getParameters()
+       -- parameters2, gradParameters = model:getParameters()
 	-- model:parameters()
-	print('paras: ',parameters)
+	print('paras: ',parameters[{{1,4}}])
+	--print('paras get form model,', parameters2[{{1,4}}])
 	print('gradparameters: ')
-	print(gradParameters)
-      -- return cost and gradient for parameters updating
+	print(gradParameters[{{1,4}}])
+        -- return cost and gradient for parameters updating
       return f,gradParameters
     end
 
