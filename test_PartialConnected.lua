@@ -40,20 +40,22 @@ optimState = {
   learningRateDecay = opt.learningRateDecay,
 }
 
-
-inpu = torch.Tensor(30,8,1,1):uniform(1,100):float()
-inpu[{{},{1,2}}] = torch.rand(30,2,1,1) * (-10)
-inpu[{{},{3,4}}] = torch.rand(30,2,1,1) * 10
-inpu[{{},{5,6}}] = torch.rand(30,2,1,1) * 100
-inpu[{{},{7,8}}] = torch.rand(30,2,1,1)
-
+num_model = 4
+input_pmodel = 6
+inpu = torch.Tensor(30,24,1,1):uniform(1,100):float()
+for i = 1,num_model do
+inpu[{{},{1 + input_pmodel * (i - 1), input_pmodel * i}}] = torch.rand(30,input_pmodel,1,1)*10 
+-- inpu[{{},{26,50}}] = torch.rand(30,input_pmodel,1,1) * 10
+-- inpu[{{},{51,75}}] = torch.rand(30,input_pmodel,1,1) * 100
+-- inpu[{{},{76,100}}] = torch.rand(30,input_pmodel,1,1)
+end
 model:training()
 for i = 1,20 do
 
 
 
-inputs = torch.Tensor(1,8,1,1):uniform(-2,2)
-inputs:float()
+-- inputs = torch.Tensor(1,8,1,1):uniform(-2,2)
+-- inputs:float()
     local feval = function(x)
       --[[
          sgd call faval function(loss function), 
@@ -68,14 +70,20 @@ inputs:float()
       --]]
       if x ~= parameters then parameters:copy(x) end
       
---      gradParameters:zero()
+      print(gradParameters)
+      print(gradParameters)
+
+      gradParameters:zero()
       
       model = model:float()
-     -- print(type(inputs))
-      local outputs = model:forward(inpu[{{i},{}}])
---      print(inpu[{{i},{}}])
-  --    print("then output is ")
-  --    local outputs = model:forward(torch.FloatTensor{inputs})
+      inputs = inpu[{{i, i+2},{}}]  
+--      print('size of input', inputs:size())
+	-- print(type(inputs))
+      local outputs = model:forward(inpu[{{i,i+2},{}}])
+
+--    print(inpu[{{i},{}}])
+      print("then output is ")
+--    local outputs = model:forward(torch.FloatTensor{inputs})
       print(outputs)   
       -- self.model[i].output:addmm(0, 1, self.model[i].weight, self.model[i].input)
       -- cast datatypr
@@ -98,14 +106,14 @@ inputs:float()
       -- add prediction to cunfusion matrix to calculate the train error
       confusion:add(outputs, targets)
 
-       -- parameters2, gradParameters = model:getParameters()
+        -- parameters2, gradParameters = model:getParameters()
 	-- model:parameters()
---	print('paras: ',parameters[{{1,4}}])
-	print('paras: ',parameters)
-	--print('paras get form model,', parameters2[{{1,4}}])
-	print('gradparameters: ')
+	print('paras: ',parameters[{{1,4}}])
+	-- print('paras: ',parameters)
+	-- print('paras get form model,', parameters2[{{1,4}}])
+	-- print('gradparameters: ')
 --	print(gradParameters[{{1,4}}])
-	print(gradParameters)
+	-- print(gradParameters)
         -- return cost and gradient for parameters updating
       return f,gradParameters
     end
