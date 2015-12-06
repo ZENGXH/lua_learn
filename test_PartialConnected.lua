@@ -6,10 +6,10 @@ dofile 'PartialConnected.lua'
 opt = lapp[[
    -s,--save                  (default "logs")      subdirectory to save logs
    -b,--batchSize             (default 128)          batch size
-   -r,--learningRate          (default 0.1)        learning rate
+   -r,--learningRate          (default 1)        learning rate
    --learningRateDecay        (default 1e-7)      learning rate decay
    --weightDecay              (default 0.0005)      weightDecay
-   -m,--momentum              (default 0.5)         momentum
+   -m,--momentum              (default 0)         momentum
    --epoch_step               (default 25)          epoch step
    --model                    (default vgg_bn_drop)     model name
    --max_epoch                (default 300)           maximum number of iterations
@@ -32,7 +32,7 @@ targets:float()
 confusion = optim.ConfusionMatrix(4)
 
 parameters,gradParameters = model:getParameters()
-criterion = nn.CrossEntropyCriterion()
+criterion = nn.MultiCriterion()
 optimState = {
   learningRate = opt.learningRate,
   weightDecay = opt.weightDecay,
@@ -40,9 +40,15 @@ optimState = {
   learningRateDecay = opt.learningRateDecay,
 }
 
+
 inpu = torch.Tensor(30,8,1,1):uniform(1,100):float()
+inpu[{{},{1,2}}] = torch.rand(30,2,1,1) * (-10)
+inpu[{{},{3,4}}] = torch.rand(30,2,1,1) * 10
+inpu[{{},{5,6}}] = torch.rand(30,2,1,1) * 100
+inpu[{{},{7,8}}] = torch.rand(30,2,1,1)
+
 model:training()
-for i = 1,10 do
+for i = 1,20 do
 
 
 
@@ -70,13 +76,13 @@ inputs:float()
 --      print(inpu[{{i},{}}])
   --    print("then output is ")
   --    local outputs = model:forward(torch.FloatTensor{inputs})
---      print(outputs)   
+      print(outputs)   
       -- self.model[i].output:addmm(0, 1, self.model[i].weight, self.model[i].input)
       -- cast datatypr
       targets = targets:float()
       outputs = outputs:float()
       criterion = criterion:float()
-      print(targets)
+--      print(targets)
       -- calculate error/cost(f) and gradient wrt to parameters
       -- \partial{L} / \partial{W} = -2 * E = 2 * (outputs - targets)
       local f = criterion:forward(outputs, targets)
@@ -94,10 +100,12 @@ inputs:float()
 
        -- parameters2, gradParameters = model:getParameters()
 	-- model:parameters()
-	print('paras: ',parameters[{{1,4}}])
+--	print('paras: ',parameters[{{1,4}}])
+	print('paras: ',parameters)
 	--print('paras get form model,', parameters2[{{1,4}}])
 	print('gradparameters: ')
-	print(gradParameters[{{1,4}}])
+--	print(gradParameters[{{1,4}}])
+	print(gradParameters)
         -- return cost and gradient for parameters updating
       return f,gradParameters
     end

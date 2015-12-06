@@ -6,7 +6,7 @@ local PartialConnected, parent = torch.class('nn.PartialConnected', 'nn.Module')
 dbg = require("debugger")
 local logger = logging.file("test_partialconnect.log")
 local testp1 = -1 -- vali on forward
-local testp2 = 3 -- vali on backward
+local testp2 = 200 -- vali on backward
 local para_rocord = 0
 
 function PartialConnected: __init(inputSize, outputSize)
