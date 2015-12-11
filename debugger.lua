@@ -6,6 +6,9 @@ See LICENSE for full license text
 
    
 -- ]]
+
+-- useage: dbg = require("debugger")
+-- dbg()
   
 local repl
 
