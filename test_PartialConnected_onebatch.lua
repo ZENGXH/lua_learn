@@ -17,7 +17,7 @@ opt = lapp[[
 
  model = nn.Sequential()
 
-model:add(nn.PartialConnected(1,1))
+model:add(nn.PartialConnected(30, 24, 6))
 
 -- inputs = torch.Tensor(1,8,1,1):uniform(-2,2)
 model:float()

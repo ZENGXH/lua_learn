@@ -9,27 +9,33 @@ local testp1 = -1 -- vali on forward
 local testp2 = 200 -- vali on backward
 local para_rocord = 0
 
-function PartialConnected: __init(inputSize, outputSize)
+function PartialConnected: __init( batchSize, inputSize, outputSize)
         parent.__init(self)
-        batchSize = 3
 
-        inputSize = 24
+        self.batchSize = batchSize
+        self.inputSize = inputSize
 
-        outputsize = 4
-        num_model = 4
-        input_pmodel = 6 --dimension of feature
-        output_pmodel = 1
+        self.outputSize = outputSize
+        self.num_model = inputSize/outputSize
+        num_model = self.num_model
+
+        self.input_pmodel = inputSize/num_model --dimension of feature
+        input_pmodel = self.input_pmodel
+        self.output_pmodel = 1
+        output_pmodel = self.output_pmodel
+        print('batchSize, num of model, input_pmodel, output_pmodel:')
+        print(self.batchSize, self.num_model, self.input_pmodel, self.output_pmodel)
         self.model = {}
         input_split_flag = false
         gradOutput_split_flag = false
 
         for i=1, num_model do
-                table.insert(self.model, createModel())
+                table.insert(self.model, self:createModel(self))
         end
 --      print(model)
         -- #
         -- three in a mask
-        self.weight = torch.Tensor(num_model * input_pmodel):uniform(-1,1)
+        self.weight = torch.Tensor(num_model * self.input_pmodel):uniform(-1,1)
         self.bias = torch.Tensor(num_model):uniform(-1,1)
         self:updateModel2self()
         self:getParaFromNet()
@@ -44,19 +50,19 @@ function PartialConnected:getParaFromNet()
         end
 end
 
-function createModel()
+function PartialConnected:createModel()
         -- inputSize and be {N, 2}
         local submodel = {}
-        submodel.input = torch.Tensor(batchSize, input_pmodel)
+        submodel.input = torch.Tensor(self.batchSize, self.input_pmodel)
 
-        submodel.weight = torch.Tensor(input_pmodel, output_pmodel)
-        submodel.gradWeight = torch.Tensor(input_pmodel, output_pmodel)
+        submodel.weight = torch.Tensor(self.input_pmodel,self.output_pmodel)
+        submodel.gradWeight = torch.Tensor(self.input_pmodel, self.output_pmodel)
 
         submodel.bias = torch.Tensor(1) -- each model have one bias, intotal num_model
         submodel.gradBias = torch.Tensor(1) --
 
-        submodel.output = torch.Tensor(batchSize, output_pmodel)
-        submodel.gradOutput = torch.Tensor(batchSize, output_pmodel)
+        submodel.output = torch.Tensor(self.batchSize, self.output_pmodel)
+        submodel.gradOutput = torch.Tensor(self.batchSize, self.output_pmodel)
 
         return submodel
 end
@@ -123,7 +129,7 @@ function PartialConnected:updateOutput(input)
 	if(input:dim() ~= 1) then 
 		-- reshape()
 		for i = 1, #self.model do -- 1 to 4
-			self.model[i].input:resize(batchSize, input_pmodel)
+			self.model[i].input:resize(self.batchSize, input_pmodel)
 			self.model[i].weight:resize(input_pmodel)
 --			print('#model:', i)
 --			print('input: ', self.model[i].input)
@@ -131,12 +137,12 @@ function PartialConnected:updateOutput(input)
 --			p(self.model[i].bias)
 --			p(self.model[i].output)
 			-- self.model[]
-			self.addbuffer = torch.Tensor(batchSize, 1):fill(1):float() -- scala in this case
+			self.addbuffer = torch.Tensor(self.batchSize, 1):fill(1):float() -- scala in this case
 			-- self.model[i].output:addmm(0, 1, self.model[i].weight, self.model[i].input)
 			-- self.model[i].output[1] =torch.dot(self.model[i].weight, self.model[i].input)
 
 			local output_resize =torch.mv(self.model[i].input, self.model[i].weight)
-			self.model[i].output = output_resize:resize(batchSize, 1)
+			self.model[i].output = output_resize:resize(self.batchSize, 1)
 			if i< testp1 then
 				print(i)
 				print('weight',self.model[i].weight)
@@ -150,7 +156,7 @@ function PartialConnected:updateOutput(input)
 --			print(self.model[i].bias)
 			-- self.model[i].output = torch.addmm(1, self.model[i].output, self.model[i].bias[1], self.addbuffer) 
 			self.model[i].output = torch.add(self.model[i].output, self.model[i].bias[1], self.addbuffer)
-			self.model[i].output:resize(batchSize, output_pmodel)
+			self.model[i].output:resize(self.batchSize, self.output_pmodel)
 			if i< testp1 then
 			print('add')
 				print('bias',self.model[i].bias)
@@ -314,7 +320,7 @@ function PartialConnected: splitInput2Sub(input)
 			{1 + (i-1) * input_pmodel, i * input_pmodel}}]:float()
 
 --		print(self.model[i].input:size())
-		self.model[i].input:resize(batchSize, input_pmodel)
+		self.model[i].input:resize(self.batchSize, input_pmodel)
 	end
 end
 
@@ -323,7 +329,7 @@ function PartialConnected:splitGradOutput2Sub(gradOutput)
 	for i=1, #self.model do
 		self.model[i].gradOutput = gradOutput[
 			{{1 + (i-1) * output_pmodel, i * output_pmodel}}]
-		self.model[i].gradOutput:resize(batchSize, output_pmodel)
+		self.model[i].gradOutput:resize(self.batchSize, output_pmodel)
 	end
 end
 
