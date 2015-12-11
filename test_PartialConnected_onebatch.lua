@@ -3,6 +3,7 @@ require 'optim'
 require 'nn'
 dofile 'PartialConnected.lua'
 
+showParaFlag = true
 opt = lapp[[
    -s,--save                  (default "logs")      subdirectory to save logs
    -b,--batchSize             (default 128)          batch size
@@ -14,8 +15,7 @@ opt = lapp[[
    --model                    (default vgg_bn_drop)     model name
    --max_epoch                (default 300)           maximum number of iterations
 ]] -- table
-
- model = nn.Sequential()
+model = nn.Sequential()
 
 model:add(nn.PartialConnected(1,1))
 
@@ -101,11 +101,13 @@ inputs:float()
        -- parameters2, gradParameters = model:getParameters()
 	-- model:parameters()
 --	print('paras: ',parameters[{{1,4}}])
+	if showParaFlag then
 	print('paras: ',parameters)
 	--print('paras get form model,', parameters2[{{1,4}}])
 	print('gradparameters: ')
 --	print(gradParameters[{{1,4}}])
 	print(gradParameters)
+	end
         -- return cost and gradient for parameters updating
       return f,gradParameters
     end

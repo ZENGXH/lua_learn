@@ -5,11 +5,12 @@ local flag = 0
 local PartialConnected, parent = torch.class('nn.PartialConnected', 'nn.Module')
 dbg = require("debugger")
 local logger = logging.file("test_partialconnect.log")
-local testp1 = -1 -- vali on forward
-local testp2 = 200 -- vali on backward
+local testp1 =-1-- 2 -- vali on forward
+local infoFlag = false-- true
+local testp2 = 3 -- vali on backward
 local para_rocord = 0
 
-function PartialConnected: __init(inputSize, outputSize)
+function PartialConnected: __init(batchSize, inputSize, outputSize)
 	parent.__init(self)
 	batchSize = 1
 	
@@ -21,7 +22,11 @@ function PartialConnected: __init(inputSize, outputSize)
 	self.model = {}
 	input_split_flag = false
 	gradOutput_split_flag = false
-
+	if infoFlag then
+		print('input per model: ',input_pmodel)
+		print('output per model: ',output_pmodel)
+		print('num of model: ', num_model)
+	end
 	for i=1, num_model do 
 		table.insert(self.model, createModel())
 	end
@@ -127,20 +132,23 @@ function PartialConnected:updateOutput(input)
 			self.addbuffer = torch.Tensor(output_pmodel):fill(1):float() -- scala in this case
 			-- self.model[i].output:addmm(0, 1, self.model[i].weight, self.model[i].input)
 			self.model[i].output[1] =torch.dot( self.model[i].weight, self.model[i].input)
+
 			if i< testp1 then
 				print(i)
 				print('weight',self.model[i].weight)
 				print('input',self.model[i].input)
-			print(' output weight times input')
-			print(self.model[i].output)
+				print('output of weight times input')
+				print(self.model[i].output)
 			end
+
 --			print(self.model[i].weight)
 --			print(type(self.model[i].output))
 			--self.model[i].output:addr(1, self.model[i].output,1, self.model[i].bias, self.addbuffer)
 --			print(self.model[i].bias)
 			self.model[i].output = self.model[i].output + self.model[i].bias
+
 			if i< testp1 then
-			print('add')
+				print('add')
 				print('bias',self.model[i].bias)
 				print('output',self.model[i].output)
 			end
@@ -284,7 +292,7 @@ function PartialConnected:updateGradInput(input, gradOutput)
 		--	print(self.model[i].gradOutput)
 		--	print(self.model[i].weight)
 			-- self.model[i].gradInput = torch.Tensor(2,1):fill(0):float	
-self.model[i].weight:resize(2,1)
+			self.model[i].weight:resize(2,1)
 			self.model[i].gradInput = torch.mv(self.model[i].weight, self.model[i].gradOutput)
 		end
 	end
