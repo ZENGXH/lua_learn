@@ -8,7 +8,7 @@ local logger = logging.file("test_partialconnect.log")
 local testp1 = -1 -- vali on forward
 local testp2 = 200 -- vali on backward
 local para_rocord = 0
-
+  
 function PartialConnected: __init( batchSize, inputSize, outputSize)
         parent.__init(self)
 
